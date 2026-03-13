@@ -1,0 +1,6 @@
+services:
+  bot:
+    image: ghcr.io/nurik432/vpn-bot:main
+    restart: always
+    env_file: .env
+    network_mode: host
