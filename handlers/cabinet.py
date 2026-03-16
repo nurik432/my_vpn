@@ -154,7 +154,6 @@ async def confirm_reset_key(callback: CallbackQuery, session: AsyncSession, marz
         return
 
     # Проверяем активную подписку в БД
-    from sqlalchemy import select
     sub_result = await session.execute(
         select(Subscription)
         .where(Subscription.user_id == user_id, Subscription.is_active == True)
