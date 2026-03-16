@@ -68,7 +68,7 @@ async def show_cabinet(callback: CallbackQuery, session: AsyncSession, marzban: 
 
     traffic_text = (
         f"├ Использовано: <b>{traffic['used_gb']} GB</b>\n"
-        f"└ Лимит: <b>{'Безлимит ∞' if traffic['unlimited'] else str(traffic['total_gb']) + ' GB'}</b>"
+        f"└ Лимит: <b>{'Безлимит ∞' if traffic.get('unlimited', True) else str(traffic.get('total_gb', 0)) + ' GB'}</b>"
     )
 
     text = (
