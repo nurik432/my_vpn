@@ -7,7 +7,6 @@ from sqlalchemy import select
 from datetime import datetime
 
 from database.models import User, Subscription
-from services.marzban import MarzbanAPI
 
 router = Router()
 
@@ -151,6 +150,18 @@ async def confirm_reset_key(callback: CallbackQuery, session: AsyncSession, marz
 
     if not user or not user.marzban_username:
         await callback.answer("❌ У тебя нет активной подписки", show_alert=True)
+        return
+
+    # Проверяем активную подписку в БД
+    from sqlalchemy import select
+    sub_result = await session.execute(
+        select(Subscription)
+        .where(Subscription.user_id == user_id, Subscription.is_active == True)
+        .order_by(Subscription.expires_at.desc())
+    )
+    sub = sub_result.scalar_one_or_none()
+    if not sub:
+        await callback.answer("❌ Нет активной подписки для пересоздания ключа", show_alert=True)
         return
 
     await callback.message.edit_text("⏳ Пересоздаю ключ...", parse_mode="HTML")
