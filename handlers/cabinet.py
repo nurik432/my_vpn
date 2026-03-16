@@ -1,6 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
@@ -82,7 +83,10 @@ async def show_cabinet(callback: CallbackQuery, session: AsyncSession, marzban: 
         f"🎁 Бонусных дней: <b>{user.referral_bonus_days}</b>"
     )
 
-    await callback.message.edit_text(text, reply_markup=cabinet_kb(), parse_mode="HTML")
+    try:
+        await callback.message.edit_text(text, reply_markup=cabinet_kb(), parse_mode="HTML")
+    except TelegramBadRequest:
+        await callback.answer("✅ Данные актуальны")
 
 
 @router.callback_query(F.data == "my_key")
