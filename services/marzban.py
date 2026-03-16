@@ -1,5 +1,9 @@
 import aiohttp
+import ssl
 from typing import Optional
+
+# Отключаем SSL проверку для локального Marzban
+_connector = aiohttp.TCPConnector(ssl=False)
 
 
 class MarzbanAPI:
@@ -10,7 +14,7 @@ class MarzbanAPI:
         self.token: Optional[str] = None
 
     async def get_token(self) -> str:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.post(
                 f"{self.base_url}/api/admin/token",
                 data={"username": self.username, "password": self.password},
@@ -33,7 +37,7 @@ class MarzbanAPI:
             "data_limit": data_limit_gb * 1024 ** 3,
             "expire": expire_ts,
         }
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.post(
                 f"{self.base_url}/api/user",
                 json=payload,
@@ -43,7 +47,7 @@ class MarzbanAPI:
 
     async def get_user(self, username: str) -> dict:
         await self.get_token()
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.get(
                 f"{self.base_url}/api/user/{username}",
                 headers=self._headers(),
@@ -56,7 +60,7 @@ class MarzbanAPI:
 
     async def reset_user_traffic(self, username: str) -> dict:
         await self.get_token()
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.post(
                 f"{self.base_url}/api/user/{username}/reset",
                 headers=self._headers(),
@@ -69,7 +73,7 @@ class MarzbanAPI:
         user = await self.get_user(username)
         current_expire = user.get("expire") or int(time.time())
         new_expire = max(current_expire, int(time.time())) + expire_days * 86400
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.put(
                 f"{self.base_url}/api/user/{username}",
                 json={"expire": new_expire},
