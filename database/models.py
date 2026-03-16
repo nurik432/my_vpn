@@ -17,6 +17,9 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
+    # Пробный период
+    trial_used: Mapped[bool] = mapped_column(Boolean, default=False)
+
     # Реферальная система
     referrer_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
     referral_count: Mapped[int] = mapped_column(Integer, default=0)
