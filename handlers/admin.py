@@ -11,6 +11,7 @@ router = Router()
 ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 
 from handlers.payment import PLANS
+from services.plans import load_plans, update_plan_field
 
 
 class EditPlan(StatesGroup):
@@ -30,8 +31,9 @@ def admin_menu_kb():
 
 
 def plans_list_kb():
+    plans = load_plans()
     kb = InlineKeyboardBuilder()
-    for plan_id, plan in PLANS.items():
+    for plan_id, plan in plans.items():
         if plan_id == "trial":
             kb.button(text=f"{plan['emoji']} {plan['name']} (бесплатно)", callback_data=f"admin_edit|{plan_id}")
         else:
@@ -45,8 +47,9 @@ def plans_list_kb():
 
 
 def plan_fields_kb(plan_id: str):
+    plans = load_plans()
+    plan = plans[plan_id]
     kb = InlineKeyboardBuilder()
-    plan = PLANS[plan_id]
     kb.button(text=f"📅 Дней: {plan['days']}", callback_data=f"admin_field|{plan_id}|days")
     if plan_id != "trial":
         kb.button(text=f"💳 Цена ₽: {plan['price_rub']}", callback_data=f"admin_field|{plan_id}|price_rub")
@@ -149,7 +152,8 @@ async def process_new_value(message: Message, state: FSMContext):
             new_value = new_value_raw
 
         old_value = PLANS[plan_id][field]
-        PLANS[plan_id][field] = new_value
+        update_plan_field(plan_id, field, new_value)
+        PLANS[plan_id][field] = new_value  # обновляем в памяти тоже
         await state.clear()
 
         kb = InlineKeyboardBuilder()

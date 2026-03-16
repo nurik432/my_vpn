@@ -10,6 +10,7 @@ from sqlalchemy import select
 from datetime import datetime, timedelta
 
 from database.models import User, Subscription, Payment
+from services.plans import PLANS, load_plans, update_plan_field
 
 router = Router()
 
@@ -18,57 +19,15 @@ YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
 CRYPTOBOT_TOKEN = os.getenv("CRYPTOBOT_TOKEN")
 BOT_USERNAME = os.getenv("BOT_USERNAME")
 
-PLANS = {
-    "trial": {
-        "name": "Пробный период",
-        "days": 3,
-        "price_rub": 0,
-        "price_usdt": 0,
-        "description": "3 дня бесплатно",
-        "emoji": "🎁",
-    },
-    "1m": {
-        "name": "1 месяц",
-        "days": 30,
-        "price_rub": 199,
-        "price_usdt": 2.5,
-        "description": "199 ₽ / $2.5",
-        "emoji": "📅",
-    },
-    "3m": {
-        "name": "3 месяца",
-        "days": 90,
-        "price_rub": 499,
-        "price_usdt": 5.5,
-        "description": "499 ₽ / $5.5 — скидка 25%",
-        "emoji": "💰",
-    },
-    "6m": {
-        "name": "6 месяцев",
-        "days": 180,
-        "price_rub": 899,
-        "price_usdt": 9.9,
-        "description": "899 ₽ / $9.9 — скидка 35%",
-        "emoji": "🔥",
-    },
-    "1y": {
-        "name": "1 год",
-        "days": 365,
-        "price_rub": 1490,
-        "price_usdt": 16.9,
-        "description": "1490 ₽ / $16.9 — скидка 50%",
-        "emoji": "👑",
-    },
-}
-
 
 # ─── Клавиатуры ───────────────────────────────────────────────────────────────
 
 def plans_kb(show_trial: bool = False):
+    plans = load_plans()
     kb = InlineKeyboardBuilder()
     if show_trial:
         kb.button(text="🎁 Попробовать бесплатно (3 дня)", callback_data="buy_trial")
-    for plan_id, plan in PLANS.items():
+    for plan_id, plan in plans.items():
         if plan_id == "trial":
             continue
         kb.button(
