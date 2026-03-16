@@ -203,14 +203,14 @@ async def activate_trial(callback: CallbackQuery, session: AsyncSession, marzban
     plan = PLANS["trial"]
     if not user.marzban_username:
         marzban_username = f"tg_{user_id}"
-        await marzban.create_user(marzban_username, data_limit_gb=100, expire_days=plan["days"])
+        await marzban.create_user(marzban_username, data_limit_gb=0, expire_days=plan["days"])
         user.marzban_username = marzban_username
     else:
         await marzban.extend_user(user.marzban_username, expire_days=plan["days"])
 
     user.trial_used = True
     session.add(Subscription(
-        user_id=user_id, plan="trial", days=plan["days"], data_limit_gb=100,
+        user_id=user_id, plan="trial", days=plan["days"], data_limit_gb=0,
         expires_at=datetime.now() + timedelta(days=plan["days"]),
     ))
     await session.commit()
@@ -364,13 +364,13 @@ async def _activate_subscription(callback, session, marzban, payment_id: str, pl
     # Создаём или продлеваем в Marzban
     if not user.marzban_username:
         marzban_username = f"tg_{user_id}"
-        await marzban.create_user(marzban_username, data_limit_gb=100, expire_days=plan["days"])
+        await marzban.create_user(marzban_username, data_limit_gb=0, expire_days=plan["days"])
         user.marzban_username = marzban_username
     else:
         await marzban.extend_user(user.marzban_username, expire_days=plan["days"])
 
     session.add(Subscription(
-        user_id=user_id, plan=plan_id, days=plan["days"], data_limit_gb=100,
+        user_id=user_id, plan=plan_id, days=plan["days"], data_limit_gb=0,
         expires_at=datetime.now() + timedelta(days=plan["days"]),
     ))
 

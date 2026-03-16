@@ -15,11 +15,20 @@ def cabinet_kb():
     kb = InlineKeyboardBuilder()
     kb.button(text="🔄 Обновить", callback_data="cabinet")
     kb.button(text="🔑 Мой ключ", callback_data="my_key")
+    kb.button(text="♻️ Новый ключ", callback_data="reset_key")
     kb.button(text="◀️ Назад", callback_data="main_menu")
-    kb.adjust(2, 1)
+    kb.adjust(2, 1, 1)
     return kb.as_markup()
 
-#123
+
+def confirm_reset_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Да, пересоздать", callback_data="confirm_reset_key")
+    kb.button(text="❌ Отмена", callback_data="cabinet")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
 @router.callback_query(F.data == "cabinet")
 async def show_cabinet(callback: CallbackQuery, session: AsyncSession, marzban: MarzbanAPI):
     user_id = callback.from_user.id
@@ -56,6 +65,11 @@ async def show_cabinet(callback: CallbackQuery, session: AsyncSession, marzban: 
     sub = sub_result.scalar_one_or_none()
     plan_name = sub.plan.upper() if sub else "—"
 
+    traffic_text = (
+        f"├ Использовано: <b>{traffic['used_gb']} GB</b>\n"
+        f"└ Лимит: <b>{'Безлимит ∞' if traffic['unlimited'] else str(traffic['total_gb']) + ' GB'}</b>"
+    )
+
     text = (
         f"👤 <b>Личный кабинет</b>\n\n"
         f"📋 Имя: <b>{callback.from_user.full_name}</b>\n"
@@ -63,9 +77,7 @@ async def show_cabinet(callback: CallbackQuery, session: AsyncSession, marzban: 
         f"🔌 Статус: {status_icon}\n"
         f"📅 Истекает: <b>{expire_str}</b>\n\n"
         f"📊 <b>Трафик</b>\n"
-        f"├ Использовано: <b>{traffic['used_gb']} GB</b>\n"
-        f"├ Всего: <b>{traffic['total_gb']} GB</b>\n"
-        f"└ Осталось: <b>{traffic['remaining_gb']} GB</b>\n\n"
+        f"{traffic_text}\n\n"
         f"👥 Рефералов приглашено: <b>{user.referral_count}</b>\n"
         f"🎁 Бонусных дней: <b>{user.referral_bonus_days}</b>"
     )
@@ -90,7 +102,9 @@ async def show_key(callback: CallbackQuery, session: AsyncSession, marzban: Marz
 
         link = links[0]
         kb = InlineKeyboardBuilder()
+        kb.button(text="♻️ Новый ключ", callback_data="reset_key")
         kb.button(text="◀️ Назад", callback_data="cabinet")
+        kb.adjust(1)
 
         await callback.message.edit_text(
             f"🔑 <b>Твой VPN ключ</b>\n\n"
@@ -98,12 +112,96 @@ async def show_key(callback: CallbackQuery, session: AsyncSession, marzban: Marz
             f"📱 Скопируй и вставь в:\n"
             f"• Android: <b>v2rayNG</b>\n"
             f"• iPhone: <b>Streisand</b> / <b>FoXray</b>\n"
+            f"• Windows: <b>v2rayN</b>\n\n"
+            f"⚠️ Если ключ не работает — нажми <b>«Новый ключ»</b>",
+            reply_markup=kb.as_markup(),
+            parse_mode="HTML",
+        )
+    except Exception:
+        await callback.answer("❌ Ошибка получения ключа", show_alert=True)
+
+
+@router.callback_query(F.data == "reset_key")
+async def reset_key_confirm(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "♻️ <b>Пересоздать VPN ключ?</b>\n\n"
+        "Старый ключ перестанет работать.\n"
+        "Тебе нужно будет импортировать новый ключ в приложение.\n\n"
+        "Продолжить?",
+        reply_markup=confirm_reset_kb(),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data == "confirm_reset_key")
+async def confirm_reset_key(callback: CallbackQuery, session: AsyncSession, marzban: MarzbanAPI):
+    user_id = callback.from_user.id
+
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.marzban_username:
+        await callback.answer("❌ У тебя нет активной подписки", show_alert=True)
+        return
+
+    await callback.message.edit_text("⏳ Пересоздаю ключ...", parse_mode="HTML")
+
+    try:
+        old_username = user.marzban_username
+
+        # Получаем текущие данные юзера (срок действия, лимит)
+        marzban_user = await marzban.get_user(old_username)
+        expire_ts = marzban_user.get("expire")
+        data_limit = marzban_user.get("data_limit", 100 * 1024 ** 3)
+        used_traffic = marzban_user.get("used_traffic", 0)
+
+        # Удаляем старого юзера
+        await marzban.delete_user(old_username)
+
+        # Создаём нового с тем же сроком
+        import time
+        new_username = f"tg_{user_id}_{int(time.time())}"
+        remaining_seconds = max(0, (expire_ts or 0) - int(time.time()))
+        remaining_days = max(1, remaining_seconds // 86400)
+        remaining_limit = max(0, data_limit - used_traffic)
+
+        await marzban.create_user_raw(
+            username=new_username,
+            data_limit=0,  # безлимит
+            expire_ts=expire_ts,
+        )
+
+        # Обновляем username в БД
+        user.marzban_username = new_username
+        await session.commit()
+
+        # Получаем новый ключ
+        links = await marzban.get_user_links(new_username)
+        link = links[0] if links else "Ключ не найден"
+
+        kb = InlineKeyboardBuilder()
+        kb.button(text="👤 Личный кабинет", callback_data="cabinet")
+        kb.adjust(1)
+
+        await callback.message.edit_text(
+            f"✅ <b>Новый ключ готов!</b>\n\n"
+            f"<code>{link}</code>\n\n"
+            f"📱 Импортируй в приложение:\n"
+            f"• Android: <b>v2rayNG</b>\n"
+            f"• iPhone: <b>Streisand</b> / <b>FoXray</b>\n"
             f"• Windows: <b>v2rayN</b>",
             reply_markup=kb.as_markup(),
             parse_mode="HTML",
         )
+
     except Exception as e:
-        await callback.answer("❌ Ошибка получения ключа", show_alert=True)
+        kb = InlineKeyboardBuilder()
+        kb.button(text="◀️ Назад", callback_data="cabinet")
+        await callback.message.edit_text(
+            "❌ <b>Ошибка пересоздания ключа</b>\n\nПопробуй позже или обратись в поддержку.",
+            reply_markup=kb.as_markup(),
+            parse_mode="HTML",
+        )
 
 
 def _no_sub_kb():

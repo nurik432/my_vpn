@@ -26,7 +26,7 @@ class MarzbanAPI:
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"}
 
-    async def create_user(self, username: str, data_limit_gb: int = 10, expire_days: int = 30) -> dict:
+    async def create_user(self, username: str, data_limit_gb: int = 0, expire_days: int = 30) -> dict:
         await self.get_token()
         import time
         expire_ts = int(time.time()) + expire_days * 86400
@@ -34,7 +34,7 @@ class MarzbanAPI:
             "username": username,
             "proxies": {"vless": {"flow": ""}},
             "inbounds": {"vless": ["VLESS_REALITY"]},
-            "data_limit": data_limit_gb * 1024 ** 3,
+            "data_limit": 0,  # 0 = безлимит
             "expire": expire_ts,
         }
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
@@ -81,12 +81,38 @@ class MarzbanAPI:
             ) as resp:
                 return await resp.json()
 
+    async def delete_user(self, username: str) -> dict:
+        await self.get_token()
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+            async with session.delete(
+                f"{self.base_url}/api/user/{username}",
+                headers=self._headers(),
+            ) as resp:
+                return await resp.json()
+
+    async def create_user_raw(self, username: str, data_limit: int, expire_ts: int) -> dict:
+        await self.get_token()
+        payload = {
+            "username": username,
+            "proxies": {"vless": {"flow": ""}},
+            "inbounds": {"vless": ["VLESS_REALITY"]},
+            "data_limit": 0,  # 0 = безлимит
+            "expire": expire_ts,
+        }
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+            async with session.post(
+                f"{self.base_url}/api/user",
+                json=payload,
+                headers=self._headers(),
+            ) as resp:
+                return await resp.json()
+
     async def get_user_traffic(self, username: str) -> dict:
         user = await self.get_user(username)
         used = user.get("used_traffic", 0)
         total = user.get("data_limit", 0)
         return {
             "used_gb": round(used / 1024 ** 3, 2),
-            "total_gb": round(total / 1024 ** 3, 2),
-            "remaining_gb": round((total - used) / 1024 ** 3, 2),
+            "total_gb": round(total / 1024 ** 3, 2) if total > 0 else None,
+            "unlimited": total == 0,
         }
