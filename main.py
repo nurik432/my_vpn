@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import init_db, AsyncSessionLocal
 from services.marzban import MarzbanAPI
-from handlers import start, cabinet, payment, referral
+from handlers import start, cabinet, payment, referral, admin
 
 load_dotenv()
 
@@ -39,6 +39,7 @@ async def main():
     dp.include_router(cabinet.router)
     dp.include_router(payment.router)
     dp.include_router(referral.router)
+    dp.include_router(admin.router)
 
     # Инициализируем БД
     await init_db()
