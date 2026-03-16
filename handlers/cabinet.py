@@ -49,13 +49,16 @@ async def show_cabinet(callback: CallbackQuery, session: AsyncSession, marzban: 
         traffic = await marzban.get_user_traffic(user.marzban_username)
         marzban_user = await marzban.get_user(user.marzban_username)
         expire_ts = marzban_user.get("expire")
-        expire_str = datetime.fromtimestamp(expire_ts).strftime("%d.%m.%Y") if expire_ts else "∞"
+        if expire_ts and expire_ts > 0:
+            expire_str = datetime.fromtimestamp(expire_ts).strftime("%d.%m.%Y")
+        else:
+            expire_str = "Не ограничено"
         status = marzban_user.get("status", "unknown")
-        status_icon = "✅" if status == "active" else "❌"
-    except Exception:
-        traffic = {"used_gb": 0, "total_gb": 0, "remaining_gb": 0}
+        status_icon = "✅ Активна" if status == "active" else "❌ Неактивна"
+    except Exception as e:
+        traffic = {"used_gb": 0, "unlimited": True}
         expire_str = "—"
-        status_icon = "❓"
+        status_icon = "❓ Неизвестно"
 
     # Активная подписка
     sub_result = await session.execute(
