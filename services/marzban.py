@@ -109,10 +109,10 @@ class MarzbanAPI:
 
     async def get_user_traffic(self, username: str) -> dict:
         user = await self.get_user(username)
-        used = user.get("used_traffic", 0)
-        total = user.get("data_limit", 0)
+        used = user.get("used_traffic") or 0
+        total = user.get("data_limit") or 0
         return {
             "used_gb": round(used / 1024 ** 3, 2),
             "total_gb": round(total / 1024 ** 3, 2) if total > 0 else None,
-            "unlimited": total == 0,
+            "unlimited": total == 0 or total is None,
         }

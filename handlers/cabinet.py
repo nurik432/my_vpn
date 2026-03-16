@@ -49,8 +49,9 @@ async def show_cabinet(callback: CallbackQuery, session: AsyncSession, marzban: 
         traffic = await marzban.get_user_traffic(user.marzban_username)
         marzban_user = await marzban.get_user(user.marzban_username)
         expire_ts = marzban_user.get("expire")
-        if expire_ts and expire_ts > 0:
-            expire_str = datetime.fromtimestamp(expire_ts).strftime("%d.%m.%Y")
+        if expire_ts and int(expire_ts) > 0:
+            from datetime import datetime
+            expire_str = datetime.fromtimestamp(int(expire_ts)).strftime("%d.%m.%Y")
         else:
             expire_str = "Не ограничено"
         status = marzban_user.get("status", "unknown")
