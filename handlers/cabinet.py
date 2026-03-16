@@ -157,28 +157,25 @@ async def confirm_reset_key(callback: CallbackQuery, session: AsyncSession, marz
 
     try:
         old_username = user.marzban_username
+        print(f"Reset key: deleting {old_username}")
 
-        # Получаем текущие данные юзера (срок действия, лимит)
         marzban_user = await marzban.get_user(old_username)
+        print(f"Got marzban user: {marzban_user}")
         expire_ts = marzban_user.get("expire")
-        data_limit = marzban_user.get("data_limit", 100 * 1024 ** 3)
-        used_traffic = marzban_user.get("used_traffic", 0)
 
-        # Удаляем старого юзера
         await marzban.delete_user(old_username)
+        print(f"Deleted {old_username}")
 
-        # Создаём нового с тем же сроком
         import time
         new_username = f"tg_{user_id}_{int(time.time())}"
-        remaining_seconds = max(0, (expire_ts or 0) - int(time.time()))
-        remaining_days = max(1, remaining_seconds // 86400)
-        remaining_limit = max(0, data_limit - used_traffic)
+        print(f"Creating new user: {new_username}")
 
         await marzban.create_user_raw(
             username=new_username,
-            data_limit=0,  # безлимит
+            data_limit=0,
             expire_ts=expire_ts,
         )
+        print(f"Created {new_username}")
 
         # Обновляем username в БД
         user.marzban_username = new_username
@@ -204,6 +201,9 @@ async def confirm_reset_key(callback: CallbackQuery, session: AsyncSession, marz
         )
 
     except Exception as e:
+        print(f"Reset key error: {e}")
+        import traceback
+        traceback.print_exc()
         kb = InlineKeyboardBuilder()
         kb.button(text="◀️ Назад", callback_data="cabinet")
         await callback.message.edit_text(
