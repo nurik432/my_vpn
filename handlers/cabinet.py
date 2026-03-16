@@ -56,6 +56,7 @@ async def show_cabinet(callback: CallbackQuery, session: AsyncSession, marzban: 
         status = marzban_user.get("status", "unknown")
         status_icon = "✅ Активна" if status == "active" else "❌ Неактивна"
     except Exception as e:
+        print(f"Marzban error for {user.marzban_username}: {e}")
         traffic = {"used_gb": 0, "unlimited": True}
         expire_str = "—"
         status_icon = "❓ Неизвестно"
