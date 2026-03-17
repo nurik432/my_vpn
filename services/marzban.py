@@ -55,6 +55,8 @@ class MarzbanAPI:
 
     async def get_user_links(self, username: str) -> list[str]:
         user = await self.get_user(username)
+        if not user:
+            return []
         return user.get("links", [])
 
     async def reset_user_traffic(self, username: str) -> dict:
@@ -108,6 +110,8 @@ class MarzbanAPI:
 
     async def get_user_traffic(self, username: str) -> dict:
         user = await self.get_user(username)
+        if not user:
+            return {"used_gb": 0, "total_gb": None, "unlimited": True}
         used = user.get("used_traffic") or 0
         total = user.get("data_limit") or 0
         return {
