@@ -53,6 +53,17 @@ class MarzbanAPI:
                     return await response.json()
                 return None
 
+    async def get_all_users(self) -> list[dict]:
+        await self.get_token()
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+            async with session.get(
+                f"{self.base_url}/api/users",
+                headers=self._headers(),
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                return []
+
     async def get_user_links(self, username: str) -> list[str]:
         user = await self.get_user(username)
         if not user:

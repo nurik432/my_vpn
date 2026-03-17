@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import init_db, AsyncSessionLocal
 from services.marzban import MarzbanAPI
+from restore_keys import sync_users_from_marzban
 from handlers import start, cabinet, payment, referral, admin, support, promocode
 
 load_dotenv()
@@ -45,6 +46,12 @@ async def main():
 
     # Инициализируем БД
     await init_db()
+    
+    # Восстанавливаем ключи из Marzban если БД случайно затерлась
+    try:
+        await sync_users_from_marzban(marzban)
+    except Exception as e:
+        print(f"Sync error: {e}")
 
     print("🤖 Бот запущен!")
     await dp.start_polling(bot)
