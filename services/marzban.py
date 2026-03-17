@@ -6,25 +6,23 @@ from typing import Optional, Dict, Any, List
 
 class MarzbanAPI:
     def __init__(self, base_url: str, username: str, password: str):
-        self.base_url = base_url.rstrip("/")
+        self.base_url = base_url.rstrip('/')
         self.username = username
         self.password = password
         self.token: Optional[str] = None
-        # Initialize the connector once for reuse across requests
-        self._connector = aiohttp.TCPConnector(ssl=False)
 
     async def get_token(self) -> str:
-        async with aiohttp.ClientSession(connector=self._connector) as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.post(
                 f"{self.base_url}/api/admin/token",
                 data={"username": self.username, "password": self.password},
-            ) as resp:
-                data = await resp.json()
-                self.token = data["access_token"]
+            ) as response:
+                result = await response.json()
+                self.token = result.get("access_token")
                 return self.token
 
     def _headers(self) -> dict:
-        return {"Authorization": f"Bearer {self.token}"}
+        return {"Authorization": f"Bearer {self.token}", "Accept": "application/json"}
 
     async def create_user(self, username: str, data_limit_gb: int = 0, expire_days: int = 30) -> dict:
         await self.get_token()
@@ -36,22 +34,24 @@ class MarzbanAPI:
             "data_limit": 0,  # 0 = безлимит
             "expire": expire_ts,
         }
-        async with aiohttp.ClientSession(connector=self._connector) as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.post(
                 f"{self.base_url}/api/user",
                 json=payload,
                 headers=self._headers(),
-            ) as resp:
-                return await resp.json()
+            ) as response:
+                return await response.json()
 
     async def get_user(self, username: str) -> dict:
         await self.get_token()
-        async with aiohttp.ClientSession(connector=self._connector) as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.get(
                 f"{self.base_url}/api/user/{username}",
                 headers=self._headers(),
-            ) as resp:
-                return await resp.json()
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                return None
 
     async def get_user_links(self, username: str) -> list[str]:
         user = await self.get_user(username)
@@ -59,12 +59,12 @@ class MarzbanAPI:
 
     async def reset_user_traffic(self, username: str) -> dict:
         await self.get_token()
-        async with aiohttp.ClientSession(connector=self._connector) as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.post(
                 f"{self.base_url}/api/user/{username}/reset",
                 headers=self._headers(),
-            ) as resp:
-                return await resp.json()
+            ) as response:
+                return await response.json()
 
     async def extend_user(self, username: str, expire_days: int = 30) -> dict:
         await self.get_token()
