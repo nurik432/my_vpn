@@ -1,9 +1,7 @@
 import aiohttp
 import ssl
-from typing import Optional
-
-# Отключаем SSL проверку для локального Marzban
-_connector = aiohttp.TCPConnector(ssl=False)
+import time
+from typing import Optional, Dict, Any, List
 
 
 class MarzbanAPI:
@@ -12,9 +10,11 @@ class MarzbanAPI:
         self.username = username
         self.password = password
         self.token: Optional[str] = None
+        # Initialize the connector once for reuse across requests
+        self._connector = aiohttp.TCPConnector(ssl=False)
 
     async def get_token(self) -> str:
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+        async with aiohttp.ClientSession(connector=self._connector) as session:
             async with session.post(
                 f"{self.base_url}/api/admin/token",
                 data={"username": self.username, "password": self.password},
@@ -28,7 +28,6 @@ class MarzbanAPI:
 
     async def create_user(self, username: str, data_limit_gb: int = 0, expire_days: int = 30) -> dict:
         await self.get_token()
-        import time
         expire_ts = int(time.time()) + expire_days * 86400
         payload = {
             "username": username,
@@ -37,7 +36,7 @@ class MarzbanAPI:
             "data_limit": 0,  # 0 = безлимит
             "expire": expire_ts,
         }
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+        async with aiohttp.ClientSession(connector=self._connector) as session:
             async with session.post(
                 f"{self.base_url}/api/user",
                 json=payload,
@@ -47,7 +46,7 @@ class MarzbanAPI:
 
     async def get_user(self, username: str) -> dict:
         await self.get_token()
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+        async with aiohttp.ClientSession(connector=self._connector) as session:
             async with session.get(
                 f"{self.base_url}/api/user/{username}",
                 headers=self._headers(),
@@ -60,7 +59,7 @@ class MarzbanAPI:
 
     async def reset_user_traffic(self, username: str) -> dict:
         await self.get_token()
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+        async with aiohttp.ClientSession(connector=self._connector) as session:
             async with session.post(
                 f"{self.base_url}/api/user/{username}/reset",
                 headers=self._headers(),

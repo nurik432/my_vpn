@@ -29,6 +29,35 @@ class User(Base):
     referrer: Mapped["User | None"] = relationship("User", back_populates="referrals", remote_side=[id])
     subscriptions: Mapped[list["Subscription"]] = relationship("Subscription", back_populates="user")
     payments: Mapped[list["Payment"]] = relationship("Payment", back_populates="user")
+    promocodes: Mapped[list["UserPromocode"]] = relationship("UserPromocode", back_populates="user")
+
+
+class Promocode(Base):
+    __tablename__ = "promocodes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    discount_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    bonus_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_uses: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current_uses: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    users: Mapped[list["UserPromocode"]] = relationship("UserPromocode", back_populates="promocode")
+
+
+class UserPromocode(Base):
+    __tablename__ = "user_promocodes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
+    promocode_id: Mapped[int] = mapped_column(Integer, ForeignKey("promocodes.id"))
+    used_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="promocodes")
+    promocode: Mapped["Promocode"] = relationship("Promocode", back_populates="users")
 
 
 class Subscription(Base):

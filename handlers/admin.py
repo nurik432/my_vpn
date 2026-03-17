@@ -60,6 +60,72 @@ def plan_fields_kb(plan_id: str):
     return kb.as_markup()
 
 
+@router.message(Command("promo"))
+async def cmd_promo(message: Message, session):
+    if not is_admin(message.from_user.id):
+        return
+
+    # /promo <code_name> <days_or_percent> <type: d/p> <max_uses>
+    args = message.text.split()
+    if len(args) < 3:
+        await message.answer(
+            "📝 <b>Как создать промокод:</b>\n\n"
+            "<code>/promo [ИМЯ] [ЗНАЧЕНИЕ] [ТИП: d/p] [КОЛ-ВО ИСПОЛЬЗОВАНИЙ (необязательно)]</code>\n\n"
+            "d - бонусные дни\np - скидка %\n\n"
+            "<i>Пример: /promo SUMMER 10 p 100</i> (скидка 10%, 100 использований)\n"
+            "<i>Пример: /promo FREE 3 d</i> (3 бонусных дня, безлимит)", 
+            parse_mode="HTML"
+        )
+        return
+
+    code_name = args[1].upper()
+    try:
+        value = int(args[2])
+    except ValueError:
+        await message.answer("❌ Значение должно быть числом.")
+        return
+
+    promo_type = args[3].lower()
+    max_uses = None
+    if len(args) > 4:
+        try:
+            max_uses = int(args[4])
+        except ValueError:
+            await message.answer("❌ Количество использований должно быть числом.")
+            return
+
+    from database.models import Promocode
+    from sqlalchemy import select
+    
+    # Check if exists
+    exists = await session.execute(select(Promocode).where(Promocode.code == code_name))
+    if exists.scalar_one_or_none():
+        await message.answer(f"❌ Промокод <b>{code_name}</b> уже существует.", parse_mode="HTML")
+        return
+
+    code = Promocode(code=code_name)
+    if promo_type == 'd':
+        code.bonus_days = value
+    elif promo_type == 'p':
+        code.discount_percent = value
+    else:
+        await message.answer("❌ Тип должен быть 'd' или 'p'.")
+        return
+        
+    code.max_uses = max_uses
+    session.add(code)
+    await session.commit()
+    
+    await message.answer(
+        f"✅ <b>Промокод успешно создан!</b>\n\n"
+        f"🎫 Код: <code>{code_name}</code>\n"
+        f"🎁 Тип: {'Бонусные дни' if promo_type == 'd' else 'Скидка'}\n"
+        f"💎 Значение: {value}{' дней' if promo_type == 'd' else '%'}\n"
+        f"🔄 Использований: {max_uses if max_uses else 'Безлимит'}",
+        parse_mode="HTML"
+    )
+
+
 @router.message(Command("admin"))
 async def cmd_admin(message: Message):
     if not is_admin(message.from_user.id):

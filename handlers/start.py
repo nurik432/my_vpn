@@ -17,7 +17,8 @@ def main_menu_kb():
     kb.button(text="💳 Купить подписку", callback_data="buy")
     kb.button(text="👥 Рефералы", callback_data="referral")
     kb.button(text="💬 Поддержка", callback_data="support")
-    kb.adjust(2, 2, 1)
+    kb.button(text="🎫 Ввести промокод", callback_data="enter_promocode")
+    kb.adjust(2, 2, 2)
     return kb.as_markup()
 
 
