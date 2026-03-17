@@ -16,7 +16,8 @@ def main_menu_kb():
     kb.button(text="🔑 Мой VPN ключ", callback_data="my_key")
     kb.button(text="💳 Купить подписку", callback_data="buy")
     kb.button(text="👥 Рефералы", callback_data="referral")
-    kb.adjust(2, 2)
+    kb.button(text="💬 Поддержка", callback_data="support")
+    kb.adjust(2, 2, 1)
     return kb.as_markup()
 
 
